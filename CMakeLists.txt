@@ -30,6 +30,8 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Widgets WebSockets Network Li
 
 # include(./src/plugin/ObPluginInterface.cmake)
 
+include(./cmake/include-ffmpeg.cmake)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
 set(PROJECT_SOURCES
@@ -51,9 +53,11 @@ target_link_libraries(obc_baselib
     Qt${QT_VERSION_MAJOR}::Network
 )
 
+
 ### add extra qt library
 target_link_libraries(OBCDataFfmpeg
     PRIVATE obc_baselib
+    ffmpeg_lib
 )
 
 
