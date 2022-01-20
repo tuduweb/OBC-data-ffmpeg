@@ -35,7 +35,9 @@ ELSEIF(WIN32)
 include_directories(${CMAKE_SOURCE_DIR}/3rd/ffmpeg/include/)
 link_directories(${CMAKE_SOURCE_DIR}/3rd/ffmpeg/lib/)
 
-add_library(ffmpeg_lib STATIC)
+file(GLOB_RECURSE HEADERS  ./*.h)
+
+add_library(ffmpeg_lib STATIC ${HEADERS})
 target_link_libraries(ffmpeg_lib
     PUBLIC avcodec
     avformat avutil swresample swscale swscale avfilter
