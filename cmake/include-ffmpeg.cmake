@@ -1,5 +1,7 @@
 # 已经编译好的方式
 
+IF (APPLE)
+
 set(ffmpeg_libs_DIR /usr/local/Cellar/ffmpeg/4.4.1_3/lib)
 set(ffmpeg_headers_DIR /usr/local/Cellar/ffmpeg/4.4.1_3/include)
 
@@ -25,4 +27,18 @@ link_directories(${ffmpeg_libs_DIR} )
 add_library(ffmpeg_lib STATIC)
 target_link_libraries(ffmpeg_lib
     PUBLIC avcodec
-    avformat avutil swresample swscale swscale avfilter)
+    avformat avutil swresample swscale swscale avfilter
+)
+
+ELSEIF(WIN32)
+
+include_directories(${CMAKE_SOURCE_DIR}/3rd/ffmpeg/include/)
+link_directories(${CMAKE_SOURCE_DIR}/3rd/ffmpeg/lib/)
+
+add_library(ffmpeg_lib STATIC)
+target_link_libraries(ffmpeg_lib
+    PUBLIC avcodec
+    avformat avutil swresample swscale swscale avfilter
+)
+
+ENDIF()
