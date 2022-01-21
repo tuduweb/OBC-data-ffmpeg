@@ -5,6 +5,9 @@
 RTSPThread::RTSPThread(QObject *parent) : QThread(parent)
 {
     qDebug() << "hello thread";
+
+    isRunning = true;
+
 }
 
 void RTSPThread::initLib()
@@ -109,15 +112,16 @@ void RTSPThread::run()
 
 	AVPacket* packet = (AVPacket*)malloc(sizeof(AVPacket)); //分配一个packet
 	av_new_packet(packet, pCodecCtx->width * pCodecCtx->height); //分配packet的数据
-
-	bool isRunning = true;
-
     
 	static int errorCnt = 0;
 	while (isRunning)
 	{
+        if(isPaused) {
+            QThread::usleep(10000);
+            continue;
+        }
 		//从stream中获取一帧率数据
-		if (av_read_frame(pFormatCtx, packet) < 0) {
+		if(av_read_frame(pFormatCtx, packet) < 0) {
 			break;
 		}
 
@@ -144,11 +148,12 @@ void RTSPThread::run()
 				// 	callback((uchar*)out_buffer, pCodecCtx->width, pCodecCtx->height);
 
 				// }
-				//////////
+				//////////需要修改成更合理的模式
 				QImage tmmImage(out_buffer, pCodecCtx->width, pCodecCtx->height, QImage::Format_RGB888);
 				QImage image = tmmImage.copy();
 				emit NewFrameArrived(image);
                 qDebug() << image;
+                //TODO: 加入统计方法
 			}
 		}
 	_next:
@@ -170,3 +175,8 @@ void RTSPThread::run()
 
 }
 
+int RTSPThread::setUrl(const QString& url)
+{
+    _url = url;
+    return 0;
+}

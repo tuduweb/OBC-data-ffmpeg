@@ -30,6 +30,10 @@ public:
     explicit RTSPThread(QObject *parent = nullptr);
     static void initLib();
 
+    int setUrl(const QString& url);
+    int setPause() { isPaused = true; return 0; };
+    int setStart() { isPaused = false; return 0; };
+
 protected:
     void run() override;
 
@@ -40,5 +44,8 @@ protected:
     AVFormatContext* pFormatCtx = NULL;
     AVDictionary* avdic = NULL;
 
-
+private:
+    QString _url;
+    bool isRunning = false;
+    bool isPaused = false;
 };
