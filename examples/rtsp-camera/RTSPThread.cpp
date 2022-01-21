@@ -1,62 +1,34 @@
-#include <stdio.h>
-#define __STDC_CONSTANT_MACROS
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "RTSPThread.hpp"
 
-#include <libavcodec/avcodec.h>
-#include <libavutil/imgutils.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
-#include <libavdevice/avdevice.h>
-#include <libavformat/version.h>
-#include <libavutil/time.h>
-#include <libavutil/mathematics.h>
+#include "qdebug.h"
 
-#ifdef __cplusplus
-};
-#endif
-
-#include <QStringList>
-#include <QDebug>
-#include <QTime>
-
-#include <QWidget>
-#include <QApplication>
-#include <QVBoxLayout>
-
-#define TIMEMS      qPrintable(QTime::currentTime().toString("HH:mm:ss zzz"))
-
-
-int main(int argc, char *argv[])
+RTSPThread::RTSPThread(QObject *parent) : QThread(parent)
 {
-    QApplication app(argc, argv);
+    qDebug() << "hello thread";
+}
 
+void RTSPThread::initLib()
+{
     av_log_set_level(AV_LOG_DEBUG);//
     av_log(NULL,AV_LOG_INFO,"...%s\n","hello");
     
     av_register_all();
     avformat_network_init();
-    
-    //输出所有支持的解码器名称
-    QStringList listCodeName;
-    AVCodec* code = av_codec_next(NULL);
-    while (code != NULL) {
-        listCodeName << code->name;
-        code = code->next;
-    }
+}
 
-    qDebug() << TIMEMS << listCodeName;
+void RTSPThread::run()
+{
 
 
 	//申请 AVFormatContext 结构体
-	AVFormatContext* pFormatCtx = avformat_alloc_context();
+	//AVFormatContext* pFormatCtx = avformat_alloc_context();
+	pFormatCtx = avformat_alloc_context();
 	if (pFormatCtx == nullptr) {
 		qDebug() << "alloc av format error!\n";
-		return -1;
+		return;
 	}
 
-	AVDictionary* avdic = NULL;
+	//AVDictionary* avdic = NULL;
 	//使用TCP的方式 使内网下也可以穿透
 	av_dict_set(&avdic, "rtsp_transport", "tcp", 0);
 	av_dict_set(&avdic, "buffer_size", "8192000", 0);
@@ -73,18 +45,19 @@ int main(int argc, char *argv[])
 
 	av_dict_set(&avdic, "stimeout", "5000000", 0);//5s
 
-    QString url("rtsp://28.140.140");
+    
+    QString url("rtsp://admin:admin123@172.28.140.140");
 
 	//打开媒体文件
 	if (avformat_open_input(&pFormatCtx, url.toStdString().c_str(), NULL, &avdic) != 0) {
 		qDebug("can't open the file. \n");
-        return -1;
+        return;
 	}
 
-	//查找解码器
+		//查找解码器
 	if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
 		qDebug("Could't find stream infomation.\n");
-		return -1;
+		return;
 	}
 
 	//查找解码器参数
@@ -96,10 +69,10 @@ int main(int argc, char *argv[])
 	}
 	if (videoStream == -1) {
 		qDebug("Didn't find a video stream.\n");
-		return -1;
+		return;
 	}
 
-    //申请解码器
+	//申请解码器
 	AVCodecContext* pCodecCtx = avcodec_alloc_context3(NULL);
 	//从AVFormatContext设置解码器参数
 	avcodec_parameters_to_context(pCodecCtx, pFormatCtx->streams[videoStream]->codecpar);
@@ -113,13 +86,13 @@ int main(int argc, char *argv[])
 
 	if (pCodec == NULL) {
 		qDebug("Codec not found.\n");
-		return -1;
+		return;
 	}
 
 	//打开解码器
 	if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
 		qDebug("Could not open codec.\n");
-		return -1;
+		return;
 	}
 
 	//初始化SwsContext 设置转换为 AV_PIX_FMT_RGB32
@@ -137,14 +110,63 @@ int main(int argc, char *argv[])
 	AVPacket* packet = (AVPacket*)malloc(sizeof(AVPacket)); //分配一个packet
 	av_new_packet(packet, pCodecCtx->width * pCodecCtx->height); //分配packet的数据
 
+	bool isRunning = true;
 
-    QWidget w;
-    w.resize(500,400);
-    QVBoxLayout* layout = new QVBoxLayout;
-    w.setLayout(layout);
-    w.show();
-    return app.exec();
+    
+	static int errorCnt = 0;
+	while (isRunning)
+	{
+		//从stream中获取一帧率数据
+		if (av_read_frame(pFormatCtx, packet) < 0) {
+			break;
+		}
 
-    return 0;
+		if (packet->stream_index == videoStream) {
+
+			//送入解码器
+			int ret = avcodec_send_packet(pCodecCtx, packet);
+			int got_picture = avcodec_receive_frame(pCodecCtx, pFrame);
+
+			if (ret < 0) {
+				errorCnt++;
+				qDebug() << QString("decode error. cnt %1").arg(errorCnt);
+				goto _next;
+				//break;
+			}
+
+			if (!got_picture) {
+				//颜色空间转换，最后输出到out_buffer
+				sws_scale(img_convert_ctx, (uint8_t const* const*)pFrame->data,
+					pFrame->linesize, 0, pCodecCtx->height, pFrameRGB->data,
+					pFrameRGB->linesize);
+				// if (callback != NULL) {
+				// 	//Do something you need...
+				// 	callback((uchar*)out_buffer, pCodecCtx->width, pCodecCtx->height);
+
+				// }
+				//////////
+				QImage tmmImage(out_buffer, pCodecCtx->width, pCodecCtx->height, QImage::Format_RGB888);
+				QImage image = tmmImage.copy();
+				emit NewFrameArrived(image);
+                qDebug() << image;
+			}
+		}
+	_next:
+
+		av_packet_unref(packet);
+		QThread::usleep(500);
+	}
+
+	//RemoteLog("释放资源中...");
+
+	av_free(out_buffer);
+	av_free(pFrame);
+	av_free(pFrameRGB);
+
+	avcodec_close(pCodecCtx);
+	avformat_close_input(&pFormatCtx);
+	sws_freeContext(img_convert_ctx);
+
 
 }
+

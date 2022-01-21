@@ -1,36 +1,11 @@
-#include <stdio.h>
-#define __STDC_CONSTANT_MACROS
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "RTSPCameraStream.hpp"
 
-#include <libavcodec/avcodec.h>
-#include <libavutil/imgutils.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
-#include <libavdevice/avdevice.h>
-#include <libavformat/version.h>
-#include <libavutil/time.h>
-#include <libavutil/mathematics.h>
-
-#ifdef __cplusplus
-};
-#endif
-
-#include <QStringList>
-#include <QDebug>
-#include <QTime>
-
-#include <QWidget>
-#include <QApplication>
-#include <QVBoxLayout>
-
-#define TIMEMS      qPrintable(QTime::currentTime().toString("HH:mm:ss zzz"))
-
-
-int main(int argc, char *argv[])
+int RTSPCameraStream::StreamInit()
 {
-    QApplication app(argc, argv);
+	/* 初始化的数据 */
+	QJsonObject obj;
+
+    /* -- 单独封装到库中 -- */
 
     av_log_set_level(AV_LOG_DEBUG);//
     av_log(NULL,AV_LOG_INFO,"...%s\n","hello");
@@ -38,25 +13,15 @@ int main(int argc, char *argv[])
     av_register_all();
     avformat_network_init();
     
-    //输出所有支持的解码器名称
-    QStringList listCodeName;
-    AVCodec* code = av_codec_next(NULL);
-    while (code != NULL) {
-        listCodeName << code->name;
-        code = code->next;
-    }
-
-    qDebug() << TIMEMS << listCodeName;
-
-
 	//申请 AVFormatContext 结构体
-	AVFormatContext* pFormatCtx = avformat_alloc_context();
+	//AVFormatContext* pFormatCtx = avformat_alloc_context();
+	pFormatCtx = avformat_alloc_context();
 	if (pFormatCtx == nullptr) {
 		qDebug() << "alloc av format error!\n";
 		return -1;
 	}
 
-	AVDictionary* avdic = NULL;
+	//AVDictionary* avdic = NULL;
 	//使用TCP的方式 使内网下也可以穿透
 	av_dict_set(&avdic, "rtsp_transport", "tcp", 0);
 	av_dict_set(&avdic, "buffer_size", "8192000", 0);
@@ -73,6 +38,11 @@ int main(int argc, char *argv[])
 
 	av_dict_set(&avdic, "stimeout", "5000000", 0);//5s
 
+}
+
+int RTSPCameraStream::StreamStart()
+{
+
     QString url("rtsp://28.140.140");
 
 	//打开媒体文件
@@ -81,7 +51,7 @@ int main(int argc, char *argv[])
         return -1;
 	}
 
-	//查找解码器
+		//查找解码器
 	if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
 		qDebug("Could't find stream infomation.\n");
 		return -1;
@@ -99,7 +69,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-    //申请解码器
+	//申请解码器
 	AVCodecContext* pCodecCtx = avcodec_alloc_context3(NULL);
 	//从AVFormatContext设置解码器参数
 	avcodec_parameters_to_context(pCodecCtx, pFormatCtx->streams[videoStream]->codecpar);
@@ -137,14 +107,8 @@ int main(int argc, char *argv[])
 	AVPacket* packet = (AVPacket*)malloc(sizeof(AVPacket)); //分配一个packet
 	av_new_packet(packet, pCodecCtx->width * pCodecCtx->height); //分配packet的数据
 
+	
 
-    QWidget w;
-    w.resize(500,400);
-    QVBoxLayout* layout = new QVBoxLayout;
-    w.setLayout(layout);
-    w.show();
-    return app.exec();
 
-    return 0;
-
+	return 0;
 }
