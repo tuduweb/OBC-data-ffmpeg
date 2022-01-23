@@ -44,8 +44,6 @@ add_executable(OBCDataFfmpeg
 )
 
 add_library(obc_baselib STATIC
-    src/RTSPThread.cpp
-    src/RTSPThread.hpp
 )
 
 target_link_libraries(obc_baselib

@@ -24,7 +24,11 @@ set_target_properties( avutil PROPERTIES IMPORTED_LOCATION ${ffmpeg_libs_DIR}/li
 include_directories( ${ffmpeg_headers_DIR} )
 link_directories(${ffmpeg_libs_DIR} )
 
-add_library(ffmpeg_lib STATIC)
+add_library(ffmpeg_lib STATIC
+    ${CMAKE_SOURCE_DIR}/src/RTSPThread.cpp
+    ${CMAKE_SOURCE_DIR}/src/RTSPThread.hpp
+)
+
 target_link_libraries(ffmpeg_lib
     PUBLIC avcodec
     avformat avutil swresample swscale swscale avfilter
@@ -35,12 +39,22 @@ ELSEIF(WIN32)
 include_directories(${CMAKE_SOURCE_DIR}/3rd/ffmpeg/include/)
 link_directories(${CMAKE_SOURCE_DIR}/3rd/ffmpeg/lib/)
 
-file(GLOB_RECURSE HEADERS  ./*.h)
+file(GLOB_RECURSE HEADERS  ${CMAKE_SOURCE_DIR}/3rd/ffmpeg/include/*.h)
 
-add_library(ffmpeg_lib STATIC ${HEADERS})
+add_library(ffmpeg_lib STATIC ${HEADERS}
+    ${CMAKE_SOURCE_DIR}/src/RTSPThread.cpp
+    ${CMAKE_SOURCE_DIR}/src/RTSPThread.hpp
+)
 target_link_libraries(ffmpeg_lib
     PUBLIC avcodec
     avformat avutil swresample swscale swscale avfilter
 )
 
 ENDIF()
+
+# RTSPThread need qt lib
+target_link_libraries(ffmpeg_lib
+    PUBLIC Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Network
+)
