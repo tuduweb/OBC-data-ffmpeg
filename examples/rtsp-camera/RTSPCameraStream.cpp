@@ -43,7 +43,7 @@ int RTSPCameraStream::StreamInit()
 int RTSPCameraStream::StreamStart()
 {
 
-    QString url("rtsp://28.140.140");
+    QString url("rtsp://172.20.144.113:8554/mystream");
 
 	//打开媒体文件
 	if (avformat_open_input(&pFormatCtx, url.toStdString().c_str(), NULL, &avdic) != 0) {
