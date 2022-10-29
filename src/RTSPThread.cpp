@@ -8,15 +8,22 @@ RTSPThread::RTSPThread(QObject *parent) : QThread(parent)
 
     isRunning = true;
 
+	initLib();
+
 }
 
 void RTSPThread::initLib()
 {
+	static bool isInit = false;
+	if (isInit) return;
+
     av_log_set_level(AV_LOG_DEBUG);//
     av_log(NULL,AV_LOG_INFO,"...%s\n","hello");
     
     av_register_all();
     avformat_network_init();
+
+	isInit = true;
 }
 
 void RTSPThread::run()
@@ -49,7 +56,7 @@ void RTSPThread::run()
 	av_dict_set(&avdic, "stimeout", "5000000", 0);//5s
 
     
-    QString url("rtsp://172.20.144.113:8554/mystream");
+	const QString& url = _url;
 
 	//打开媒体文件
 	if (avformat_open_input(&pFormatCtx, url.toStdString().c_str(), NULL, &avdic) != 0) {
@@ -101,7 +108,7 @@ void RTSPThread::run()
 	//初始化SwsContext 设置转换为 AV_PIX_FMT_RGB32
 	struct SwsContext* img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height,
 		pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height,
-		AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);//SWS_FAST_BILINEAR//SWS_BICUBIC
+		AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);//SWS_FAST_BILINEAR//SWS_BICUBIC //AV_PIX_FMT_RGB24
 
 	//申请内存
 	AVFrame* pFrame = av_frame_alloc();
